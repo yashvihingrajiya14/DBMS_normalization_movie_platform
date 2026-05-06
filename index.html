@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CineDB — Movie Streaming DBMS Analyzer</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <span class="brand-icon">🎬</span>
+      <span class="brand-text">CineDB</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#" class="nav-link active" data-page="analyzer">Analyzer</a></li>
+      <li><a href="#" class="nav-link" data-page="tables">DB Tables</a></li>
+      <li><a href="#" class="nav-link" data-page="fd-analyzer">FD Analyzer</a></li>
+      <li><a href="#" class="nav-link" data-page="normalization">Normalization</a></li>
+      <li><a href="#" class="nav-link" data-page="dashboard">Dashboard</a></li>
+    </ul>
+    <div class="nav-badge">DBMS Project</div>
+  </nav>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast"></div>
+
+  <!-- ═══════════════════════════════════════
+       PAGE 1: ANALYZER
+  ═══════════════════════════════════════ -->
+  <section id="page-analyzer" class="page active">
+    <div class="page-header">
+      <h1 class="page-title">Schema Analyzer</h1>
+      <p class="page-subtitle">Enter your relational schema and functional dependencies to begin normalization analysis</p>
+    </div>
+
+    <div class="analyzer-grid">
+      <!-- Input Card -->
+      <div class="card input-card">
+        <div class="card-header">
+          <span class="card-icon">⌨️</span>
+          <h2>Schema Input</h2>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Attributes <span class="hint">(comma-separated)</span></label>
+          <input type="text" id="attributes-input" class="form-input mono"
+            placeholder="e.g. MovieID, Title, Genre, UserID, UserName" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Functional Dependencies <span class="hint">(one per line, use →)</span></label>
+          <textarea id="fd-input" class="form-textarea mono" rows="7"
+            placeholder="MovieID → Title, Genre, Language&#10;UserID → UserName, SubscriptionType&#10;SubscriptionType → Discount"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Closure — Attribute Set X <span class="hint">(comma-separated)</span></label>
+          <input type="text" id="closure-input" class="form-input mono"
+            placeholder="e.g. MovieID" />
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="analyzeAndNormalize()">
+            <span>Analyze &amp; Normalize</span>
+            <span class="btn-arrow">→</span>
+          </button>
+          <button class="btn btn-secondary" onclick="computeClosure()">
+            Compute Closure
+          </button>
+          <button class="btn btn-ghost" onclick="loadDefaults()">
+            Load Sample
+          </button>
+        </div>
+      </div>
+
+      <!-- Results Panel -->
+      <div class="results-panel">
+
+        <!-- Closure Result -->
+        <div class="card result-card" id="closure-result-card" style="display:none">
+          <div class="card-header">
+            <span class="card-icon">🔮</span>
+            <h3>Attribute Closure X⁺</h3>
+          </div>
+          <div id="closure-result-body"></div>
+        </div>
+
+        <!-- Candidate Keys -->
+        <div class="card result-card" id="keys-card" style="display:none">
+          <div class="card-header">
+            <span class="card-icon">🔑</span>
+            <h3>Candidate Keys</h3>
+          </div>
+          <div id="keys-body"></div>
+        </div>
+
+        <!-- Normal Form Progress -->
+        <div class="card result-card" id="nf-progress-card" style="display:none">
+          <div class="card-header">
+            <span class="card-icon">📊</span>
+            <h3>Normalization Progress</h3>
+          </div>
+          <div class="progress-steps" id="nf-progress"></div>
+        </div>
+
+        <!-- Quick Summary -->
+        <div class="card result-card" id="quick-summary-card" style="display:none">
+          <div class="card-header">
+            <span class="card-icon">⚡</span>
+            <h3>Quick Summary</h3>
+          </div>
+          <div id="quick-summary-body"></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       PAGE 2: DATABASE TABLES
+  ═══════════════════════════════════════ -->
+  <section id="page-tables" class="page">
+    <div class="page-header">
+      <h1 class="page-title">Database Tables</h1>
+      <p class="page-subtitle">Indian OTT streaming platform dataset — real-world relational data</p>
+    </div>
+
+    <div class="table-tabs">
+      <button class="tab-btn active" onclick="showTable('movies', this)">🎬 Movies</button>
+      <button class="tab-btn" onclick="showTable('users', this)">👤 Users</button>
+      <button class="tab-btn" onclick="showTable('subscriptions', this)">💳 Subscriptions</button>
+      <button class="tab-btn" onclick="showTable('watchhistory', this)">📺 Watch History</button>
+    </div>
+
+    <div class="card table-card">
+      <div class="table-header-row">
+        <div>
+          <span class="table-name-badge" id="active-table-name">Movies</span>
+          <span class="row-count" id="active-row-count"></span>
+        </div>
+        <input type="text" class="search-input" id="table-search" placeholder="Search..." oninput="filterTable()" />
+      </div>
+      <div class="table-scroll">
+        <table id="data-table">
+          <thead id="table-head"></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       PAGE 3: FD ANALYZER
+  ═══════════════════════════════════════ -->
+  <section id="page-fd-analyzer" class="page">
+    <div class="page-header">
+      <h1 class="page-title">Functional Dependency Analyzer</h1>
+      <p class="page-subtitle">Inspect each FD — compute closures, check superkeys, detect violations</p>
+    </div>
+
+    <div class="card" id="fd-table-card">
+      <div class="card-header">
+        <span class="card-icon">🔍</span>
+        <h2>FD Analysis Table</h2>
+        <span class="hint" style="margin-left:auto">Run Analyzer first to populate</span>
+      </div>
+      <div id="fd-analysis-body">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <p>No analysis yet. Go to <strong>Analyzer</strong> page and click <em>Analyze &amp; Normalize</em>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       PAGE 4: NORMALIZATION STEPS
+  ═══════════════════════════════════════ -->
+  <section id="page-normalization" class="page">
+    <div class="page-header">
+      <h1 class="page-title">Normalization Steps</h1>
+      <p class="page-subtitle">Step-by-step decomposition from 1NF through BCNF</p>
+    </div>
+
+    <!-- Step Progress Bar -->
+    <div class="nf-steps-bar">
+      <div class="nf-step-item" id="step-1nf">
+        <div class="nf-dot">1</div>
+        <span>1NF</span>
+      </div>
+      <div class="nf-connector"></div>
+      <div class="nf-step-item" id="step-2nf">
+        <div class="nf-dot">2</div>
+        <span>2NF</span>
+      </div>
+      <div class="nf-connector"></div>
+      <div class="nf-step-item" id="step-3nf">
+        <div class="nf-dot">3</div>
+        <span>3NF</span>
+      </div>
+      <div class="nf-connector"></div>
+      <div class="nf-step-item" id="step-bcnf">
+        <div class="nf-dot">B</div>
+        <span>BCNF</span>
+      </div>
+    </div>
+
+    <div id="normalization-accordion">
+      <div class="empty-state card">
+        <div class="empty-icon">⚙️</div>
+        <p>Run the <strong>Analyzer</strong> first to see step-by-step normalization.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       PAGE 5: DASHBOARD
+  ═══════════════════════════════════════ -->
+  <section id="page-dashboard" class="page">
+    <div class="page-header">
+      <h1 class="page-title">Summary Dashboard</h1>
+      <p class="page-subtitle">At-a-glance overview of your schema analysis</p>
+    </div>
+
+    <div id="dashboard-empty" class="empty-state card">
+      <div class="empty-icon">📈</div>
+      <p>Run the <strong>Analyzer</strong> to generate your dashboard.</p>
+    </div>
+
+    <div id="dashboard-content" style="display:none">
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="dashboard-lower">
+        <div class="card" id="recommendation-card">
+          <div class="card-header">
+            <span class="card-icon">💡</span>
+            <h3>Recommendation</h3>
+          </div>
+          <div id="recommendation-body"></div>
+        </div>
+        <div class="card" id="fd-summary-card">
+          <div class="card-header">
+            <span class="card-icon">📑</span>
+            <h3>FD Overview</h3>
+          </div>
+          <div id="fd-summary-body"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>
